@@ -332,7 +332,7 @@
   {
     "name": "button: deadline ignored",
     "file": "src/app.js",
-    "from": "if (deadline - mono < HTTP_TIMEOUT) return reasonMessage('time', T.prefix.unchecked);",
+    "from": "    if (deadline - mono < HTTP_TIMEOUT + SAVE_TIMEOUT)\n      return reasonMessage('time', T.prefix.unchecked);",
     "to": ""
   },
   {
@@ -346,5 +346,17 @@
     "file": "src/app.js",
     "from": "kept.push({ mono: mono - age, wall: Math.min(item.wall, wall + CAP_WINDOW), chars });",
     "to": "kept.push({ mono: mono - age, wall: Math.min(item.wall, wall), chars });"
+  },
+  {
+    "name": "button: save not in its deadline",
+    "file": "src/app.js",
+    "from": "if (deadline - mono < HTTP_TIMEOUT + SAVE_TIMEOUT)",
+    "to": "if (deadline - mono < HTTP_TIMEOUT)"
+  },
+  {
+    "name": "R2 no deadline recheck after the save",
+    "file": "src/app.js",
+    "from": "if (deadline - this.monotonic() < SEND_MARGIN - SAVE_TIMEOUT) {",
+    "to": "if (false) {"
   }
 ]

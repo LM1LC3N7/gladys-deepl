@@ -26,13 +26,6 @@
       list in the manifest is the documented one of 2026-11; a language the
       account does not offer gets a 400, given back to the cap.
 
-## Known limits (review r1)
-
-- The deadline recheck after the save of the count (`translateOne`) cannot be
-  reached by a test: `blocked()` asks 13.5 s left before the save, the save
-  takes 3 s at most, and the recheck asks 10.5 s. Kept as a last check before
-  the request (reviewer mutant R2 survives by design).
-
 ## Ideas
 
 - A `context` field (not translated, not billed) for short texts.
@@ -70,7 +63,7 @@
   8-bit mark (1 in 256) stays blocked until the button succeeds (said in the
   status and the docs).
 - **The button** has its own deadline (18 s from the click, under the 20 s of
-  the manifest): behind slow translations, it answers "no time left" rather
+  the manifest; the request and the save of /data must fit in what is left): behind slow translations, it answers "no time left" rather
   than sending a request Gladys no longer waits for.
 - **Pauses**: 429/529 Retry-After bounded 60 s to 6 h; 5xx 60 s doubled up to
   6 h, or its Retry-After when longer; 456 (quota, cost limit or key limit)

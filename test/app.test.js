@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { App, keyMark } from '../src/app.js';
 import { USER_AGENT } from '../src/constants.js';
 import { createMemoryStore } from '../src/store.js';
+import { testClock } from './helpers/clock.js';
 import {
   BASE_CONFIG,
   FIELDS,
@@ -791,4 +792,52 @@ test('a job still queued at stop() is refused before its count is even written',
     totals.every((t) => t < 777),
     `the queued text never reached /data (${totals.join(', ')})`,
   );
+});
+
+test('a 15 s stall during the save of the count: nothing leaves, the count is given back', async () => {
+  // An event-loop stall (GC, swap, a loaded Pi) between the save and the
+  // request: the save answers in time, but the clock has moved on.
+  const base = testClock({ start: NOW });
+  let offset = 0;
+  const clock = {
+    now: () => base.now() + offset,
+    monotonic: () => base.monotonic() + offset,
+    timers: base.timers,
+    advance: (ms) => base.advance(ms),
+  };
+  const store = createMemoryStore();
+  const ctx = await setup({ store, clock });
+  const save = store.save;
+  store.save = async (data) => {
+    if (data.calls.length) offset += 15_000;
+    return save(data);
+  };
+  const ack = await ctx.scene();
+  assert.match(ack.error ?? 'SENT', /no time left/);
+  assert.equal(ctx.api.requests.length, 0);
+  assert.equal(store.data.calls.length, 0, 'given back');
+  await ctx.app.stop();
+});
+
+test('the button leaves room for the save of /data after its request', async () => {
+  let release;
+  const gate = new Promise((resolve) => (release = resolve));
+  const ctx = await setup({
+    handler: async (r) => {
+      if (r.method === 'POST') await gate;
+      return undefined;
+    },
+  });
+  const first = ctx.scene();
+  await ctx.clock.advance(0);
+  const button = ctx.gladys.fake.action('check_account', {});
+  await ctx.clock.advance(0);
+  // 6 s waited: 12 s left, enough for the request (10 s) but not for the
+  // request and the save (13 s).
+  await ctx.clock.advance(6 * SECOND);
+  release();
+  await first;
+  assert.match((await button).data.message.en, /^Not checked: no time left/);
+  assert.equal(ctx.api.requests.length, 1);
+  await ctx.app.stop();
 });

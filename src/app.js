@@ -609,8 +609,10 @@ export class App {
     if (this.paused(mono))
       return reasonMessage(this.pause.why === 'quota' ? 'quota' : 'paused', T.prefix.unchecked);
     // Gladys gives up on the button after its timeout_seconds (20 s): a check
-    // that could no longer answer in time is not sent.
-    if (deadline - mono < HTTP_TIMEOUT) return reasonMessage('time', T.prefix.unchecked);
+    // that could no longer answer in time (the request, then the save of
+    // /data) is not sent.
+    if (deadline - mono < HTTP_TIMEOUT + SAVE_TIMEOUT)
+      return reasonMessage('time', T.prefix.unchecked);
     const used = this.dataState === 'unreadable' ? undefined : this.used(mono);
     let message;
     try {
