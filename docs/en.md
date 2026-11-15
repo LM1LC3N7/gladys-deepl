@@ -1,61 +1,82 @@
-# Demo Devices Template
+# DeepL for Gladys Assistant
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Unofficial connector, not affiliated with DeepL. It adds a **"Translate
+(DeepL)"** scene action: a text goes to DeepL, and the translation is given to
+the next actions of the scene (send it by message, speak it on a speaker,
+show it…). It uses your own DeepL API key, Free or Pro.
 
-## What you get
+Never tested with a real DeepL key yet: tell us how it goes.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+## What you need
+
+- A **DeepL API** account (not the DeepL Translator subscription): create it on
+  [deepl.com/pro-api](https://www.deepl.com/pro-api).
+  - **DeepL API Free**: 500,000 characters a month at no cost. Its key ends in
+    `:fx` and is sent to `api-free.deepl.com`.
+  - **DeepL API Pro**: a monthly base fee, then billed per character
+    translated (see the prices on deepl.com; you can set a cost limit in your
+    DeepL account). Its key is sent to `api.deepl.com`.
+- The **authentication key**, in your DeepL account, "API Keys" tab.
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+| Field                              | What it does                                                                                                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DeepL API authentication key       | Kept by Gladys in its database, never shown again, sent only to DeepL. The module picks the Free or Pro address from the key.                                   |
+| Maximum characters per translation | 1 to 5000 (1000 by default). A longer text is refused, never cut. Spaces and punctuation count, as on the DeepL bill; an emoji counts as one.                   |
+| Maximum characters over 24 hours   | 100 to 1000000 (10000 by default), on a rolling 24 hours. A safety cap against a runaway scene. 10,000 a day stays under 310,000 a month, within the Free plan. |
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+The **"Check the key"** button asks DeepL whether it accepts the key and
+shows the characters used this billing period, and those this module counted
+over 24 hours. It translates nothing and counts no character.
 
-## Actions
+## The scene action
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+Fields:
 
-## Scenes
+- **Text to translate** (required): may use scene variables, such as the
+  output of a previous action.
+- **Into**: the target language (English American by default).
+- **From**: the source language; empty, DeepL detects it.
+- **Formality**: default, more formal, less formal (for the languages that
+  have both, like German, French or Spanish; ignored otherwise).
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+Outputs, for the next actions: `translation` (the text, cut at 10,000
+characters, the most Gladys keeps), `detected_language` (for instance `FR`),
+`characters` (the characters counted for this translation) and `truncated`
+(the translation was cut).
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+Example: a "Translate (DeepL)" action on `{{triggerEvent.data.title}}` into
+French, followed by a "Send a message" action with the translation output.
 
-## Dashboard
+## Costs and caps
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+- A translation is **counted before it leaves**, and the count is saved in
+  `/data` first: a restart does not reset the 24-hour cap. If `/data` cannot
+  be written, nothing is sent.
+- A translation that DeepL may have counted (no answer in 10 seconds, a cut
+  connection, a 5xx error) is **never tried again**, and stays in the cap: a
+  second try could be billed twice. The scene action then fails with "Sent to
+  DeepL without an answer".
+- A translation DeepL surely did not take (a 4xx error, a network error before
+  the request left) is given back to the cap.
+- When DeepL reports more billed characters than the module counted, the
+  larger number is kept.
+- The DeepL quota of the account (456 error) pauses the module for 1 hour at
+  least; a 429 "too many requests" follows the delay asked by DeepL (60 s to
+  6 h); a DeepL failure (5xx) pauses 60 s, doubled on repeat, 6 h at most.
+- One request at a time; 10 translations at most wait for their turn.
 
-## Troubleshooting
+## When the scene action fails
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+The scene goes on; the error is in the scene log. Main causes: empty text,
+text longer than the maximum, cap over 24 hours reached, key refused by DeepL
+(403: no scene uses it again until you type another key or the "Check the key"
+button succeeds), pause asked by DeepL, `/data` unreadable or not writable.
+
+## Privacy
+
+The text, the translation and the key are never written in the logs, the
+status nor `/data`. `/data` keeps only the dates and character counts of the
+last 24 hours, a possible pause, and an 8-bit fingerprint of a refused key.
+The texts go to DeepL, under the terms of your DeepL account.

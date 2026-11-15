@@ -1,67 +1,90 @@
-# Template de démonstration
+# DeepL pour Gladys Assistant
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Connecteur non officiel, sans lien avec DeepL. Il ajoute l'action de scène
+**« Traduire (DeepL) »** : un texte part chez DeepL, et la traduction est
+donnée aux actions suivantes de la scène (l'envoyer par message, la lire sur
+une enceinte, l'afficher…). Il utilise votre propre clé d'API DeepL, Free ou
+Pro.
 
-## Ce que vous obtenez
+Jamais testé avec une vraie clé DeepL pour l'instant : dites-nous ce qu'il en
+est.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+## Ce qu'il faut
+
+- Un compte **DeepL API** (pas l'abonnement DeepL Traducteur) : créez-le sur
+  [deepl.com/pro-api](https://www.deepl.com/pro-api).
+  - **DeepL API Free** : 500 000 caractères par mois sans frais. Sa clé finit
+    par `:fx` et est envoyée à `api-free.deepl.com`.
+  - **DeepL API Pro** : un abonnement mensuel de base, puis une facturation au
+    caractère traduit (voir les prix sur deepl.com ; une limite de coût se
+    règle dans votre compte DeepL). Sa clé est envoyée à `api.deepl.com`.
+- La **clé d'authentification**, dans votre compte DeepL, onglet « Clés API ».
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+| Champ                                       | Rôle                                                                                                                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Clé d'authentification DeepL API            | Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à DeepL. Le module choisit l'adresse Free ou Pro d'après la clé.                                                |
+| Nombre maximal de caractères par traduction | De 1 à 5000 (1000 par défaut). Un texte plus long est refusé, jamais coupé. Espaces et ponctuation comptent, comme sur la facture DeepL ; un emoji compte pour un.                   |
+| Nombre maximal de caractères sur 24 heures  | De 100 à 1000000 (10000 par défaut), sur 24 heures glissantes. Plafond de sécurité contre une scène qui s'emballe. 10 000 par jour restent sous 310 000 par mois, dans l'offre Free. |
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+Le bouton **« Vérifier la clé »** demande à DeepL s'il accepte la clé et
+affiche les caractères consommés sur la période de facturation, et ceux que ce
+module a comptés sur 24 heures. Il ne traduit rien et ne compte aucun
+caractère.
 
-## Actions
+## L'action de scène
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+Champs :
 
-## Scènes
+- **Texte à traduire** (obligatoire) : peut contenir des variables de scène,
+  comme la sortie d'une action précédente.
+- **Vers** : la langue cible (anglais américain par défaut).
+- **Depuis** : la langue source ; vide, DeepL la détecte.
+- **Formalité** : par défaut, plus formel, moins formel (pour les langues qui
+  distinguent vouvoiement et tutoiement, comme l'allemand, le français ou
+  l'espagnol ; ignoré sinon).
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+Sorties, pour les actions suivantes : `translation` (le texte, coupé à 10 000
+caractères, le maximum que Gladys garde), `detected_language` (par exemple
+`EN`), `characters` (les caractères comptés pour cette traduction) et
+`truncated` (la traduction a été coupée).
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+Exemple : une action « Traduire (DeepL) » sur `{{triggerEvent.data.title}}`
+vers le français, suivie d'une action « Envoyer un message » avec la sortie
+traduction.
 
-## Tableau de bord
+## Coûts et plafonds
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+- Une traduction est **comptée avant de partir**, et le décompte est d'abord
+  enregistré dans `/data` : un redémarrage ne remet pas le plafond sur 24
+  heures à zéro. Si `/data` ne peut pas être écrit, rien n'est envoyé.
+- Une traduction que DeepL a pu compter (pas de réponse en 10 secondes, une
+  connexion coupée, une erreur 5xx) n'est **jamais renvoyée**, et reste dans le
+  plafond : un second essai pourrait être facturé deux fois. L'action de scène
+  échoue alors avec « Envoyé à DeepL sans réponse ».
+- Une traduction que DeepL n'a sûrement pas prise (une erreur 4xx, une erreur
+  réseau avant le départ de la requête) est rendue au plafond.
+- Quand DeepL annonce plus de caractères facturés que le module n'en a
+  comptés, le plus grand nombre est gardé.
+- Le quota DeepL du compte (erreur 456) met le module en pause 1 heure au
+  moins ; un 429 « trop de requêtes » suit le délai demandé par DeepL (60 s à
+  6 h) ; une panne DeepL (5xx) met en pause 60 s, doublées en cas de répétition,
+  6 h au plus.
+- Une requête à la fois ; 10 traductions au plus attendent leur tour.
 
-## Dépannage
+## Quand l'action de scène échoue
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+La scène continue ; l'erreur est dans le journal de la scène. Causes
+principales : texte vide, texte plus long que le maximum, plafond sur 24 heures
+atteint, clé refusée par DeepL (403 : plus aucune scène ne l'utilise tant que
+vous n'avez pas saisi une autre clé ou que le bouton « Vérifier la clé » n'a
+pas réussi), pause demandée par DeepL, `/data` illisible ou non inscriptible.
+
+## Vie privée
+
+Le texte, la traduction et la clé ne sont jamais écrits dans les journaux, le
+statut ni `/data`. `/data` ne garde que les dates et nombres de caractères des
+dernières 24 heures, une pause éventuelle, et une empreinte de 8 bits d'une clé
+refusée. Les textes partent chez DeepL, selon les conditions de votre compte
+DeepL.

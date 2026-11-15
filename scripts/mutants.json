@@ -1,0 +1,218 @@
+[
+  {
+    "name": "cap per day: never reached",
+    "file": "src/app.js",
+    "from": "if (this.used(mono) + chars > this.config.maxPerDay) return 'cap';",
+    "to": ""
+  },
+  {
+    "name": "cap per day: window halved",
+    "file": "src/app.js",
+    "from": "mono - c.mono < CAP_WINDOW",
+    "to": "mono - c.mono < CAP_WINDOW / 2"
+  },
+  {
+    "name": "cap per call: not checked before queueing",
+    "file": "src/app.js",
+    "from": "if (chars > config.maxPerCall) throw new NotSent('too_long');",
+    "to": ""
+  },
+  {
+    "name": "cap per call: not rechecked at job time",
+    "file": "src/app.js",
+    "from": "if (chars > this.config.maxPerCall) return 'too_long';",
+    "to": ""
+  },
+  {
+    "name": "config issue not rechecked at job time",
+    "file": "src/app.js",
+    "from": "if (this.config.issues.length) return this.config.issues[0];",
+    "to": ""
+  },
+  {
+    "name": "count: a maybe-counted translation given back",
+    "file": "src/app.js",
+    "from": "if (err.sent !== 'maybe') this.release(entry);",
+    "to": "this.release(entry);"
+  },
+  {
+    "name": "count: a surely failed translation kept",
+    "file": "src/app.js",
+    "from": "if (err.sent !== 'maybe') this.release(entry);",
+    "to": ""
+  },
+  {
+    "name": "count: sent without a saved count",
+    "file": "src/app.js",
+    "from": "    if (!saved) {\n      this.release(entry);\n      throw new NotSent('data_unwritable');\n    }",
+    "to": ""
+  },
+  {
+    "name": "count: billed_characters ignored",
+    "file": "src/app.js",
+    "from": "billed > entry.chars && billed <= 10_000_000",
+    "to": "false"
+  },
+  {
+    "name": "count: billed_characters lowers the count",
+    "file": "src/app.js",
+    "from": "billed > entry.chars && billed <= 10_000_000",
+    "to": "billed >= 0"
+  },
+  {
+    "name": "count: future /data date dropped",
+    "file": "src/app.js",
+    "from": "const age = Math.max(0, wall - item.wall);\n      if (age >= CAP_WINDOW) continue;",
+    "to": "const age = wall - item.wall;\n      if (age < 0 || age >= CAP_WINDOW) continue;"
+  },
+  {
+    "name": "data: unreadable /data allowed",
+    "file": "src/app.js",
+    "from": "    if (this.dataState === 'unreadable') throw new NotSent('data_unreadable');\n",
+    "to": ""
+  },
+  {
+    "name": "refusal: not checked",
+    "file": "src/app.js",
+    "from": "if (this.isRefused(this.config.apiKey)) return 'refused';",
+    "to": ""
+  },
+  {
+    "name": "refusal: never marked",
+    "file": "src/app.js",
+    "from": "      this.markRefused(config.apiKey);\n    } else if (err.code === 'rate_limited')",
+    "to": "    } else if (err.code === 'rate_limited')"
+  },
+  {
+    "name": "refusal: not lifted by a new key",
+    "file": "src/app.js",
+    "from": "if (before !== undefined && before !== this.config.apiKey && this.refusedMark) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "refusal: not lifted by the button",
+    "file": "src/app.js",
+    "from": "      this.refusedMark = undefined;\n      this.pause.streak = 0;\n      message = T.check.ok",
+    "to": "      this.pause.streak = 0;\n      message = T.check.ok"
+  },
+  {
+    "name": "refusal: usage 403 marks the key",
+    "file": "src/app.js",
+    "from": "      if (err.code === 'refused')\n        message = this.isRefused",
+    "to": "      if (err.code === 'refused' && !this.markRefused(config.apiKey))\n        message = this.isRefused"
+  },
+  {
+    "name": "pause: not checked",
+    "file": "src/app.js",
+    "from": "if (this.paused(mono)) return this.pause.why === 'quota' ? 'quota' : 'paused';",
+    "to": ""
+  },
+  {
+    "name": "pause: 5xx not doubled",
+    "file": "src/app.js",
+    "from": "this.setPause(PAUSE_MIN * 2 ** this.pause.streak, 'server');",
+    "to": "this.setPause(PAUSE_MIN, 'server');"
+  },
+  {
+    "name": "pause: Retry-After ignored",
+    "file": "src/app.js",
+    "from": "this.setPause(err.retryAfter ?? PAUSE_MIN * 2 ** this.pause.streak, 'rate_limited');",
+    "to": "this.setPause(PAUSE_MIN, 'rate_limited');"
+  },
+  {
+    "name": "pause: 456 not paused",
+    "file": "src/app.js",
+    "from": "this.setPause(Math.max(QUOTA_PAUSE, PAUSE_MIN * 2 ** this.pause.streak), 'quota');",
+    "to": ""
+  },
+  {
+    "name": "pause: not upper-bounded",
+    "file": "src/app.js",
+    "from": "const delay = Math.min(PAUSE_MAX, Math.max(grow ? PAUSE_MIN : 1, ms));",
+    "to": "const delay = Math.max(grow ? PAUSE_MIN : 1, ms);"
+  },
+  {
+    "name": "pause: not restored from /data",
+    "file": "src/app.js",
+    "from": "if (mono + left > this.pause.untilMono) this.setPause(left, why, false);",
+    "to": ""
+  },
+  {
+    "name": "queue: unbounded",
+    "file": "src/app.js",
+    "from": "if (this.waiting >= MAX_QUEUE) throw new NotSent('queue_full');\n    this.waiting += 1;\n    const gen = this.generation;\n    const run",
+    "to": "this.waiting += 1;\n    const gen = this.generation;\n    const run"
+  },
+  {
+    "name": "queue: deadline ignored",
+    "file": "src/app.js",
+    "from": "if (deadline - mono < SEND_MARGIN) return 'time';",
+    "to": ""
+  },
+  {
+    "name": "output: not cut",
+    "file": "src/app.js",
+    "from": "cut(item.text, MAX_OUTPUT)",
+    "to": "({ text: item.text, truncated: false })"
+  },
+  {
+    "name": "output: language not checked",
+    "file": "src/app.js",
+    "from": "LANG.test(item.detected_source_language)",
+    "to": "true"
+  },
+  {
+    "name": "fields: target not checked",
+    "file": "src/app.js",
+    "from": "if (!TARGET_CODES.has(target)) throw new NotSent('bad_target');",
+    "to": ""
+  },
+  {
+    "name": "http: 5xx not 'maybe'",
+    "file": "src/http.js",
+    "from": "throw new DeeplError('server', { status, sent: unknown });",
+    "to": "throw new DeeplError('server', { status });"
+  },
+  {
+    "name": "http: timeout not 'maybe'",
+    "file": "src/http.js",
+    "from": "return new DeeplError('timeout', { sent: sentIfUnknown });",
+    "to": "return new DeeplError('timeout', { sent: 'no' });"
+  },
+  {
+    "name": "http: redirect followed",
+    "file": "src/http.js",
+    "from": "redirect: 'manual',",
+    "to": "redirect: 'follow',"
+  },
+  {
+    "name": "http: body unbounded",
+    "file": "src/http.js",
+    "from": "    if (size > limit) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "http: 456 seen as a server error",
+    "file": "src/http.js",
+    "from": "if (status === 456) throw new DeeplError('quota', { status });",
+    "to": ""
+  },
+  {
+    "name": "config: Free host never chosen",
+    "file": "src/config.js",
+    "from": "key.endsWith(':fx')",
+    "to": "false"
+  },
+  {
+    "name": "config: key with a space accepted",
+    "file": "src/config.js",
+    "from": "/^[\\x21-\\x7e]{8,200}$/",
+    "to": "/^[\\x20-\\x7e]{8,200}$/"
+  },
+  {
+    "name": "store: unreadable read as missing",
+    "file": "src/store.js",
+    "from": "return err?.code === 'ENOENT' ? { status: 'missing' } : { status: 'unreadable' };",
+    "to": "return { status: 'missing' };"
+  }
+]

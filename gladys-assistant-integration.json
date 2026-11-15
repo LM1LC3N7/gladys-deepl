@@ -1,177 +1,685 @@
 {
   "manifest_version": 1,
-  "type": "device",
-  "name": "Demo Devices Template",
+  "type": "provider",
+  "name": "DeepL",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Unofficial: translate texts in your scenes with your DeepL API key (Free or Pro).",
+    "fr": "Non officiel : traduisez des textes dans vos scènes avec votre clé d'API DeepL (Free ou Pro)."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "version": "0.1.0",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-deepl:0.1.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-deepl/main/cover.png",
+  "categories": ["services"],
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "DeepL translation in your scenes",
+        "fr": "Traduction DeepL dans vos scènes"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Unofficial connector, not affiliated with DeepL. The \"Translate (DeepL)\" scene action translates a text and gives the translation to the next actions of the scene (to send it, speak it…). Create a DeepL API account on deepl.com (API Free: 500,000 characters a month at no cost; API Pro: billed per character) and copy its authentication key here. DeepL is called only by the scene action and the check button, never at start nor on a timer. Never tested with a real DeepL key yet.",
+        "fr": "Connecteur non officiel, sans lien avec DeepL. L'action de scène « Traduire (DeepL) » traduit un texte et donne la traduction aux actions suivantes de la scène (pour l'envoyer, la lire à voix haute…). Créez un compte DeepL API sur deepl.com (API Free : 500 000 caractères par mois sans frais ; API Pro : facturé au caractère) et copiez ici sa clé d'authentification. DeepL n'est appelé que par l'action de scène et le bouton de vérification, jamais au démarrage ni sur une minuterie. Jamais testé avec une vraie clé DeepL pour l'instant."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://www.deepl.com/pro-api",
+          "label": {
+            "en": "DeepL API plans",
+            "fr": "Offres DeepL API"
+          }
+        },
+        {
+          "url": "https://www.deepl.com/your-account/keys",
+          "label": {
+            "en": "Your DeepL API keys",
+            "fr": "Vos clés d'API DeepL"
+          }
+        },
+        {
+          "url": "https://github.com/LM1LC3N7/gladys-deepl/blob/main/docs/fr.md",
+          "label": {
+            "en": "Guide (French)",
+            "fr": "Guide (français)"
+          }
+        },
+        {
+          "url": "https://github.com/LM1LC3N7/gladys-deepl/blob/main/docs/en.md",
+          "label": {
+            "en": "Guide (English)",
+            "fr": "Guide (anglais)"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "api_key",
+      "type": "secret",
+      "label": {
+        "en": "DeepL API authentication key",
+        "fr": "Clé d'authentification DeepL API"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
-    },
-    {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
       "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+        "en": "Kept by Gladys in its database, never shown again, sent only to DeepL (api-free.deepl.com for a Free key ending in \":fx\", api.deepl.com otherwise).",
+        "fr": "Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à DeepL (api-free.deepl.com pour une clé Free finissant par « :fx », api.deepl.com sinon)."
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "required": true
     },
     {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
+      "key": "max_chars_per_call",
       "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "label": {
+        "en": "Maximum characters per translation",
+        "fr": "Nombre maximal de caractères par traduction"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "A longer text is refused, never cut (1 to 5000). Spaces and punctuation count, as on DeepL's bill.",
+        "fr": "Un texte plus long est refusé, jamais coupé (de 1 à 5000). Espaces et ponctuation comptent, comme sur la facture DeepL."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": 1000,
+      "min": 1,
+      "max": 5000
+    },
+    {
+      "key": "max_chars_per_day",
+      "type": "number",
+      "label": {
+        "en": "Maximum characters over 24 hours",
+        "fr": "Nombre maximal de caractères sur 24 heures"
+      },
+      "description": {
+        "en": "Safety cap against a runaway scene, on a rolling 24 hours, kept across a restart (100 to 1000000). Counted before each request; beyond it, nothing is sent and the scene action fails. 10,000 a day stays under 310,000 a month.",
+        "fr": "Plafond de sécurité contre une scène qui s'emballe, sur 24 heures glissantes, gardé au redémarrage (de 100 à 1000000). Compté avant chaque requête ; au-delà, rien n'est envoyé et l'action de scène échoue. 10 000 par jour restent sous 310 000 par mois."
+      },
+      "required": false,
+      "default": 10000,
+      "min": 100,
+      "max": 1000000
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
-    }
-  ],
-  "scene_triggers": [
-    {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
-      "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+      "key": "check_account",
+      "timeout_seconds": 20,
+      "label": {
+        "en": "Check the key",
+        "fr": "Vérifier la clé"
       },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
-        }
-      ],
-      "variables": [
-        {
-          "key": "target",
-          "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
-        }
-      ]
+      "description": {
+        "en": "Asks DeepL whether it accepts the key, with the characters used this billing period (counts no character).",
+        "fr": "Demande à DeepL s'il accepte la clé, avec les caractères consommés sur la période de facturation (ne compte aucun caractère)."
+      }
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "translate",
+      "label": {
+        "en": "Translate (DeepL)",
+        "fr": "Traduire (DeepL)"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Translates the text through DeepL (counted in the caps, billed on a Pro key). Never tried again when DeepL does not answer.",
+        "fr": "Traduit le texte avec DeepL (compté dans les plafonds, facturé avec une clé Pro). Jamais renvoyé quand DeepL ne répond pas."
+      },
+      "timeout_seconds": 45,
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
+          "key": "text",
+          "type": "string",
+          "label": {
+            "en": "Text to translate",
+            "fr": "Texte à traduire"
+          },
           "required": true
+        },
+        {
+          "key": "target_lang",
+          "type": "select",
+          "label": {
+            "en": "Into",
+            "fr": "Vers"
+          },
+          "required": true,
+          "default": "EN-US",
+          "options": [
+            {
+              "value": "AR",
+              "label": {
+                "en": "Arabic",
+                "fr": "Arabe"
+              }
+            },
+            {
+              "value": "BG",
+              "label": {
+                "en": "Bulgarian",
+                "fr": "Bulgare"
+              }
+            },
+            {
+              "value": "CS",
+              "label": {
+                "en": "Czech",
+                "fr": "Tchèque"
+              }
+            },
+            {
+              "value": "DA",
+              "label": {
+                "en": "Danish",
+                "fr": "Danois"
+              }
+            },
+            {
+              "value": "DE",
+              "label": {
+                "en": "German",
+                "fr": "Allemand"
+              }
+            },
+            {
+              "value": "EL",
+              "label": {
+                "en": "Greek",
+                "fr": "Grec"
+              }
+            },
+            {
+              "value": "EN-GB",
+              "label": {
+                "en": "English (British)",
+                "fr": "Anglais (britannique)"
+              }
+            },
+            {
+              "value": "EN-US",
+              "label": {
+                "en": "English (American)",
+                "fr": "Anglais (américain)"
+              }
+            },
+            {
+              "value": "ES",
+              "label": {
+                "en": "Spanish",
+                "fr": "Espagnol"
+              }
+            },
+            {
+              "value": "ES-419",
+              "label": {
+                "en": "Spanish (Latin American)",
+                "fr": "Espagnol (Amérique latine)"
+              }
+            },
+            {
+              "value": "ET",
+              "label": {
+                "en": "Estonian",
+                "fr": "Estonien"
+              }
+            },
+            {
+              "value": "FI",
+              "label": {
+                "en": "Finnish",
+                "fr": "Finnois"
+              }
+            },
+            {
+              "value": "FR",
+              "label": {
+                "en": "French",
+                "fr": "Français"
+              }
+            },
+            {
+              "value": "HU",
+              "label": {
+                "en": "Hungarian",
+                "fr": "Hongrois"
+              }
+            },
+            {
+              "value": "ID",
+              "label": {
+                "en": "Indonesian",
+                "fr": "Indonésien"
+              }
+            },
+            {
+              "value": "IT",
+              "label": {
+                "en": "Italian",
+                "fr": "Italien"
+              }
+            },
+            {
+              "value": "JA",
+              "label": {
+                "en": "Japanese",
+                "fr": "Japonais"
+              }
+            },
+            {
+              "value": "KO",
+              "label": {
+                "en": "Korean",
+                "fr": "Coréen"
+              }
+            },
+            {
+              "value": "LT",
+              "label": {
+                "en": "Lithuanian",
+                "fr": "Lituanien"
+              }
+            },
+            {
+              "value": "LV",
+              "label": {
+                "en": "Latvian",
+                "fr": "Letton"
+              }
+            },
+            {
+              "value": "NB",
+              "label": {
+                "en": "Norwegian (Bokmål)",
+                "fr": "Norvégien (bokmål)"
+              }
+            },
+            {
+              "value": "NL",
+              "label": {
+                "en": "Dutch",
+                "fr": "Néerlandais"
+              }
+            },
+            {
+              "value": "PL",
+              "label": {
+                "en": "Polish",
+                "fr": "Polonais"
+              }
+            },
+            {
+              "value": "PT-BR",
+              "label": {
+                "en": "Portuguese (Brazilian)",
+                "fr": "Portugais (brésilien)"
+              }
+            },
+            {
+              "value": "PT-PT",
+              "label": {
+                "en": "Portuguese (European)",
+                "fr": "Portugais (européen)"
+              }
+            },
+            {
+              "value": "RO",
+              "label": {
+                "en": "Romanian",
+                "fr": "Roumain"
+              }
+            },
+            {
+              "value": "RU",
+              "label": {
+                "en": "Russian",
+                "fr": "Russe"
+              }
+            },
+            {
+              "value": "SK",
+              "label": {
+                "en": "Slovak",
+                "fr": "Slovaque"
+              }
+            },
+            {
+              "value": "SL",
+              "label": {
+                "en": "Slovenian",
+                "fr": "Slovène"
+              }
+            },
+            {
+              "value": "SV",
+              "label": {
+                "en": "Swedish",
+                "fr": "Suédois"
+              }
+            },
+            {
+              "value": "TR",
+              "label": {
+                "en": "Turkish",
+                "fr": "Turc"
+              }
+            },
+            {
+              "value": "UK",
+              "label": {
+                "en": "Ukrainian",
+                "fr": "Ukrainien"
+              }
+            },
+            {
+              "value": "ZH-HANS",
+              "label": {
+                "en": "Chinese (simplified)",
+                "fr": "Chinois (simplifié)"
+              }
+            },
+            {
+              "value": "ZH-HANT",
+              "label": {
+                "en": "Chinese (traditional)",
+                "fr": "Chinois (traditionnel)"
+              }
+            }
+          ]
+        },
+        {
+          "key": "source_lang",
+          "type": "select",
+          "label": {
+            "en": "From (empty: detected by DeepL)",
+            "fr": "Depuis (vide : détectée par DeepL)"
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "AR",
+              "label": {
+                "en": "Arabic",
+                "fr": "Arabe"
+              }
+            },
+            {
+              "value": "BG",
+              "label": {
+                "en": "Bulgarian",
+                "fr": "Bulgare"
+              }
+            },
+            {
+              "value": "CS",
+              "label": {
+                "en": "Czech",
+                "fr": "Tchèque"
+              }
+            },
+            {
+              "value": "DA",
+              "label": {
+                "en": "Danish",
+                "fr": "Danois"
+              }
+            },
+            {
+              "value": "DE",
+              "label": {
+                "en": "German",
+                "fr": "Allemand"
+              }
+            },
+            {
+              "value": "EL",
+              "label": {
+                "en": "Greek",
+                "fr": "Grec"
+              }
+            },
+            {
+              "value": "EN",
+              "label": {
+                "en": "English",
+                "fr": "Anglais"
+              }
+            },
+            {
+              "value": "ES",
+              "label": {
+                "en": "Spanish",
+                "fr": "Espagnol"
+              }
+            },
+            {
+              "value": "ET",
+              "label": {
+                "en": "Estonian",
+                "fr": "Estonien"
+              }
+            },
+            {
+              "value": "FI",
+              "label": {
+                "en": "Finnish",
+                "fr": "Finnois"
+              }
+            },
+            {
+              "value": "FR",
+              "label": {
+                "en": "French",
+                "fr": "Français"
+              }
+            },
+            {
+              "value": "HU",
+              "label": {
+                "en": "Hungarian",
+                "fr": "Hongrois"
+              }
+            },
+            {
+              "value": "ID",
+              "label": {
+                "en": "Indonesian",
+                "fr": "Indonésien"
+              }
+            },
+            {
+              "value": "IT",
+              "label": {
+                "en": "Italian",
+                "fr": "Italien"
+              }
+            },
+            {
+              "value": "JA",
+              "label": {
+                "en": "Japanese",
+                "fr": "Japonais"
+              }
+            },
+            {
+              "value": "KO",
+              "label": {
+                "en": "Korean",
+                "fr": "Coréen"
+              }
+            },
+            {
+              "value": "LT",
+              "label": {
+                "en": "Lithuanian",
+                "fr": "Lituanien"
+              }
+            },
+            {
+              "value": "LV",
+              "label": {
+                "en": "Latvian",
+                "fr": "Letton"
+              }
+            },
+            {
+              "value": "NB",
+              "label": {
+                "en": "Norwegian",
+                "fr": "Norvégien"
+              }
+            },
+            {
+              "value": "NL",
+              "label": {
+                "en": "Dutch",
+                "fr": "Néerlandais"
+              }
+            },
+            {
+              "value": "PL",
+              "label": {
+                "en": "Polish",
+                "fr": "Polonais"
+              }
+            },
+            {
+              "value": "PT",
+              "label": {
+                "en": "Portuguese",
+                "fr": "Portugais"
+              }
+            },
+            {
+              "value": "RO",
+              "label": {
+                "en": "Romanian",
+                "fr": "Roumain"
+              }
+            },
+            {
+              "value": "RU",
+              "label": {
+                "en": "Russian",
+                "fr": "Russe"
+              }
+            },
+            {
+              "value": "SK",
+              "label": {
+                "en": "Slovak",
+                "fr": "Slovaque"
+              }
+            },
+            {
+              "value": "SL",
+              "label": {
+                "en": "Slovenian",
+                "fr": "Slovène"
+              }
+            },
+            {
+              "value": "SV",
+              "label": {
+                "en": "Swedish",
+                "fr": "Suédois"
+              }
+            },
+            {
+              "value": "TR",
+              "label": {
+                "en": "Turkish",
+                "fr": "Turc"
+              }
+            },
+            {
+              "value": "UK",
+              "label": {
+                "en": "Ukrainian",
+                "fr": "Ukrainien"
+              }
+            },
+            {
+              "value": "ZH",
+              "label": {
+                "en": "Chinese",
+                "fr": "Chinois"
+              }
+            }
+          ]
+        },
+        {
+          "key": "formality",
+          "type": "select",
+          "label": {
+            "en": "Formality",
+            "fr": "Formalité"
+          },
+          "required": false,
+          "default": "default",
+          "description": {
+            "en": "Formal or informal when the target language has both (German, French, Spanish…); ignored otherwise.",
+            "fr": "Vouvoiement ou tutoiement quand la langue cible distingue les deux (allemand, français, espagnol…) ; ignoré sinon."
+          },
+          "options": [
+            {
+              "value": "default",
+              "label": {
+                "en": "Default",
+                "fr": "Par défaut"
+              }
+            },
+            {
+              "value": "prefer_more",
+              "label": {
+                "en": "More formal",
+                "fr": "Plus formel"
+              }
+            },
+            {
+              "value": "prefer_less",
+              "label": {
+                "en": "Less formal",
+                "fr": "Moins formel"
+              }
+            }
+          ]
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
+          "key": "translation",
+          "type": "string",
+          "label": {
+            "en": "Translation",
+            "fr": "Traduction"
+          }
+        },
+        {
+          "key": "detected_language",
+          "type": "string",
+          "label": {
+            "en": "Detected source language",
+            "fr": "Langue source détectée"
+          }
+        },
+        {
+          "key": "characters",
+          "type": "number",
+          "label": {
+            "en": "Characters counted",
+            "fr": "Caractères comptés"
+          }
+        },
+        {
+          "key": "truncated",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "Translation cut (over 10,000 characters)",
+            "fr": "Traduction coupée (plus de 10 000 caractères)"
+          }
         }
       ]
-    }
-  ],
-  "widgets": [
-    {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
-      },
-      "icon": "activity",
-      "action_timeout_seconds": 15
     }
   ]
 }
