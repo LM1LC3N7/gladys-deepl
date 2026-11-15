@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-15
+
 ### Added
 
 - The scene action "Translate (DeepL)": a text into one of the DeepL target
@@ -32,3 +34,6 @@ the notes of the version's GitHub Release.
 - A 401 shown as such (not taken as a refusal of the key), a 413 as a request
   size refused by DeepL; the Retry-After of a 5xx respected; the button
   refused when it could no longer answer in time; no timer left after stop.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-deepl/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-deepl/releases/tag/v0.1.1

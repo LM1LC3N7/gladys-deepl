@@ -6,8 +6,8 @@
     "en": "Unofficial: translate texts in your scenes with your DeepL API key (Free or Pro).",
     "fr": "Non officiel : traduisez des textes dans vos scènes avec votre clé d'API DeepL (Free ou Pro)."
   },
-  "version": "0.1.0",
-  "docker_image": "ghcr.io/lm1lc3n7/gladys-deepl:0.1.0",
+  "version": "0.1.1",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-deepl:0.1.1",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-deepl/main/cover.png",
   "categories": ["services"],
