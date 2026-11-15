@@ -22,8 +22,8 @@ export const T = {
       fr: `La configuration n'a pas pu être lue depuis Gladys : nouvel essai dans ${seconds} s.`,
     }),
     refused: {
-      en: 'DeepL refused the API key at the last translation (403): no scene uses it any more. Type another key, or check it with the "Check the key" button.',
-      fr: "DeepL a refusé la clé d'API à la dernière traduction (403) : plus aucune scène ne l'utilise. Saisissez une autre clé, ou vérifiez-la avec le bouton « Vérifier la clé ».",
+      en: 'DeepL refused the API key at the last translation (403): no scene uses it any more. Type another key, or check it with the "Check the key" button (also needed, rarely, for a new key typed while the integration was stopped).',
+      fr: "DeepL a refusé la clé d'API à la dernière traduction (403) : plus aucune scène ne l'utilise. Saisissez une autre clé, ou vérifiez-la avec le bouton « Vérifier la clé » (nécessaire aussi, rarement, pour une nouvelle clé saisie pendant l'arrêt de l'intégration).",
     },
     paused: (minutes, why) => {
       const cause = {
@@ -32,8 +32,8 @@ export const T = {
           fr: 'DeepL a demandé de ralentir (429)',
         },
         quota: {
-          en: 'the DeepL character quota of the account is used up (456)',
-          fr: 'le quota de caractères DeepL du compte est épuisé (456)',
+          en: 'DeepL quota reached (456: character quota, cost limit or key limit)',
+          fr: 'quota DeepL atteint (456 : quota de caractères, limite de coût ou limite de la clé)',
         },
         server: { en: 'DeepL is failing (5xx)', fr: 'DeepL est en panne (5xx)' },
       }[why] ?? { en: 'DeepL is failing (5xx)', fr: 'DeepL est en panne (5xx)' };
@@ -102,9 +102,17 @@ export const T = {
       fr: 'le plafond de caractères sur 24 heures est atteint',
     },
     refused: { en: 'the API key was refused (403)', fr: "la clé d'API a été refusée (403)" },
+    unauthorized: {
+      en: 'DeepL answered 401 (not taken as a refusal of the key: DeepL refuses a key with 403)',
+      fr: 'DeepL a répondu 401 (pas pris pour un refus de la clé : DeepL refuse une clé par un 403)',
+    },
+    request_too_large: {
+      en: 'DeepL refused the size of the request (413)',
+      fr: 'DeepL a refusé la taille de la requête (413)',
+    },
     quota: {
-      en: 'the DeepL character quota of the account is used up (456)',
-      fr: 'le quota de caractères DeepL du compte est épuisé (456)',
+      en: 'DeepL quota reached (456: the character quota of the account, its cost limit or a limit of the key)',
+      fr: 'quota DeepL atteint (456 : le quota de caractères du compte, sa limite de coût ou une limite de la clé)',
     },
     invalid: { en: 'refused by DeepL (400)', fr: 'refusé par DeepL (400)' },
     rate_limited: {

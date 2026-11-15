@@ -17,8 +17,10 @@ import { HTTP_TIMEOUT, MAX_ANSWER_BYTES, USER_AGENT } from './constants.js';
 
 export class DeeplError extends Error {
   /**
-   * `code`: 'refused' (401, 403), 'quota' (456), 'invalid' (400), 'too_long'
-   * (413), 'rate_limited' (429, 529), 'server' (5xx), 'http' (other status),
+   * `code`: 'refused' (403), 'unauthorized' (401: DeepL documents 403 for a
+   * refused key, so a 401 is not taken as a refusal), 'quota' (456),
+   * 'invalid' (400), 'request_too_large' (413, 414), 'rate_limited' (429,
+   * 529), 'server' (5xx), 'http' (other status),
    * 'redirect', 'timeout', 'network', 'too_large'.
    */
   constructor(code, { status, sent = 'no', retryAfter } = {}) {
@@ -135,21 +137,20 @@ export async function request(
   // The error body is never read: its free text is not shown, and not needed.
   await response.body?.cancel?.().catch(() => {});
   if (status >= 300 && status < 400) throw new DeeplError('redirect', { status });
-  if (status === 401 || status === 403) throw new DeeplError('refused', { status });
+  if (status === 403) throw new DeeplError('refused', { status });
+  if (status === 401) throw new DeeplError('unauthorized', { status });
   if (status === 456) throw new DeeplError('quota', { status });
-  if (status === 413 || status === 414) throw new DeeplError('too_long', { status });
+  if (status === 413 || status === 414) throw new DeeplError('request_too_large', { status });
   if (status === 400) throw new DeeplError('invalid', { status });
+  const served = Date.parse(response.headers?.get?.('date') ?? '');
+  const retryAfter = () =>
+    retryAfterMs(response.headers?.get?.('retry-after'), Number.isFinite(served) ? served : now());
   if (status === 429 || status === 529) {
-    const served = Date.parse(response.headers?.get?.('date') ?? '');
-    throw new DeeplError('rate_limited', {
-      status,
-      retryAfter: retryAfterMs(
-        response.headers?.get?.('retry-after'),
-        Number.isFinite(served) ? served : now(),
-      ),
-    });
+    throw new DeeplError('rate_limited', { status, retryAfter: retryAfter() });
   }
   // A 5xx to a translation: DeepL may have counted it before failing.
-  if (status >= 500) throw new DeeplError('server', { status, sent: unknown });
+  if (status >= 500) {
+    throw new DeeplError('server', { status, sent: unknown, retryAfter: retryAfter() });
+  }
   throw new DeeplError('http', { status });
 }

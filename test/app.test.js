@@ -229,7 +229,8 @@ test('a translation that may have been counted is kept and never tried again', a
 test('a translation DeepL surely did not take is given back', async () => {
   for (const [failure, reason] of [
     [400, /refused by DeepL \(400\)/],
-    [413, /longer than the maximum/],
+    [413, /refused the size of the request \(413\)/],
+    [401, /DeepL answered 401 \(not taken as a refusal/],
     ['ENOTFOUND', /network error/],
     ['ECONNREFUSED', /network error/],
     [302, /unexpected redirect/],
@@ -315,8 +316,8 @@ test('429 follows Retry-After (bounded 60 s..6 h); 529 too; 456 pauses 1 hour', 
   await ctx.wait(2 * MINUTE);
   ctx.api.handler = () => json({}, 456);
   const quota = await ctx.scene();
-  assert.match(quota.error, /quota of the account is used up \(456\)/);
-  assert.match(status(ctx.gladys).message.en, /quota .* used up \(456\)/);
+  assert.match(quota.error, /DeepL quota reached \(456: the character quota of the account/);
+  assert.match(status(ctx.gladys).message.en, /quota reached \(456/);
   assert.equal(counted(ctx.store), 0);
   await ctx.wait(59 * MINUTE);
   assert.match((await ctx.scene()).error, /456/);
@@ -548,14 +549,246 @@ test('a new key with the same 8-bit mark as the refused one is still tried', asy
   const ctx = await setup({ store, handler: () => json({}, 403) });
   await ctx.scene();
   const { salt, refused } = store.data;
+  assert.match(refused, /^[0-9a-f]{2}$/, 'the key is marked');
   let twin;
-  for (let i = 0; !twin; i += 1) {
+  for (let i = 0; !twin && i < 100_000; i += 1) {
     const candidate = `twin-key-${i}-0123456789`;
     if (keyMark(salt, candidate) === refused) twin = candidate;
   }
+  assert.ok(twin, 'a key with the same mark');
   ctx.api.handler = undefined;
   await ctx.gladys.fake.configUpdated({ api_key: twin });
   assert.equal((await ctx.scene()).success, true);
   assert.equal(ctx.api.requests.at(-1).headers.Authorization, `DeepL-Auth-Key ${twin}`);
   await ctx.app.stop();
+});
+
+// --- Review r1 ----------------------------------------------------------------------
+
+test('a 429 answered during stop(): the pause is kept, no timer outlives the app', async () => {
+  for (const viaButton of [false, true]) {
+    let release;
+    const gate = new Promise((resolve) => (release = resolve));
+    const store = createMemoryStore();
+    const ctx = await setup({
+      store,
+      handler: async () => {
+        await gate;
+        return json({}, 429, { 'retry-after': '99999' });
+      },
+    });
+    const pending = viaButton ? ctx.gladys.fake.action('check_account', {}) : ctx.scene();
+    await ctx.clock.advance(0);
+    assert.equal(ctx.api.requests.length, 1);
+    const stopped = ctx.app.stop();
+    release();
+    await stopped;
+    await pending;
+    assert.equal(ctx.clock.pending, 0, `${viaButton ? 'button' : 'scene'}: no timer after stop`);
+    assert.equal(ctx.app.pauseTimer, undefined);
+    assert.ok(ctx.app.pause.untilMono > ctx.clock.monotonic(), 'the pause itself is kept');
+  }
+});
+
+test('stop() during the save of the count: nothing leaves, the count is given back', async () => {
+  const store = createMemoryStore();
+  const ctx = await setup({ store });
+  const save = store.save;
+  let saving = 0;
+  store.save = (data) => {
+    saving += 1;
+    return new Promise((resolve) =>
+      ctx.clock.timers.setTimeout(() => save(data).then(resolve), 1000),
+    );
+  };
+  const pending = ctx.scene();
+  for (let i = 0; i < 50 && !saving; i += 1) await ctx.clock.advance(0);
+  assert.equal(saving, 1, 'the count is being saved');
+  const stopped = ctx.app.stop();
+  for (let i = 0; i < 10; i += 1) await ctx.clock.advance(2000);
+  await stopped;
+  const ack = await pending;
+  assert.match(ack.error, /integration stopped/);
+  assert.equal(ctx.api.requests.length, 0);
+  assert.equal(counted(store), 0, 'given back');
+});
+
+test('a 429 with a short Retry-After still pauses 60 s at least', async () => {
+  const ctx = await setup({ handler: () => json({}, 429, { 'retry-after': '5' }) });
+  await ctx.scene();
+  ctx.api.handler = undefined;
+  await ctx.wait(30 * SECOND);
+  assert.match((await ctx.scene()).error, /pause/);
+  await ctx.wait(31 * SECOND);
+  assert.equal((await ctx.scene()).success, true);
+  await ctx.app.stop();
+});
+
+test('a 5xx with a Retry-After pauses that long (bounded), more than 60 s', async () => {
+  const ctx = await setup({ handler: () => json({}, 503, { 'retry-after': '600' }) });
+  await ctx.scene();
+  ctx.api.handler = undefined;
+  await ctx.wait(9 * MINUTE);
+  assert.match((await ctx.scene()).error, /pause/);
+  await ctx.wait(MINUTE + SECOND);
+  assert.equal((await ctx.scene()).success, true);
+  await ctx.app.stop();
+});
+
+test('beyond 1,000 entries the oldest are merged, never lost', async () => {
+  const calls = Array.from({ length: 1000 }, (_, i) => ({ wall: NOW - HOUR + i, chars: 5 }));
+  const store = createMemoryStore({ calls });
+  const ctx = await setup({ store, config: { ...BASE_CONFIG, max_chars_per_day: 100000 } });
+  assert.equal((await ctx.scene()).success, true);
+  assert.equal(callsOf(store).length, 1000);
+  assert.equal(counted(store), 5000 + LEN);
+  await ctx.app.stop();
+});
+
+test('an unreadable /data is never written: not by the button, nor by a new key', async () => {
+  const broken = createMemoryStore({ calls: [{ wall: NOW, chars: 9000 }] });
+  broken.unreadable = true;
+  const ctx = await setup({ store: broken });
+  await ctx.gladys.fake.action('check_account', {});
+  ctx.api.handler = () => json({}, 429);
+  await ctx.gladys.fake.action('check_account', {});
+  await ctx.gladys.fake.configUpdated({ api_key: PRO_KEY });
+  await ctx.wait(SECOND);
+  assert.equal(broken.saves, 0);
+  assert.deepEqual(broken.data, { calls: [{ wall: NOW, chars: 9000 }] });
+  await ctx.app.stop();
+});
+
+test('the button: refused when it could no longer answer in time, and during a pause', async () => {
+  let release;
+  const gate = new Promise((resolve) => (release = resolve));
+  const ctx = await setup({
+    handler: async (r) => {
+      if (r.method === 'POST') await gate;
+      return undefined;
+    },
+  });
+  const first = ctx.scene();
+  await ctx.clock.advance(0);
+  const button = ctx.gladys.fake.action('check_account', {});
+  await ctx.clock.advance(0);
+  assert.equal(ctx.api.requests.length, 1, 'the button waits for its turn');
+  await ctx.clock.advance(9 * SECOND);
+  release();
+  await first;
+  assert.match((await button).data.message.en, /^Not checked: no time left/);
+  assert.equal(ctx.api.requests.length, 1, 'no GET sent too late');
+  ctx.api.handler = () => json({}, 500);
+  await ctx.scene();
+  ctx.api.handler = undefined;
+  const paused = await ctx.gladys.fake.action('check_account', {});
+  assert.match(paused.data.message.en, /^Not checked: DeepL asked for a pause/);
+  assert.equal(ctx.api.requests.length, 2);
+  await ctx.app.stop();
+});
+
+test('the queue counter comes back: 15 translations in a row all leave', async () => {
+  const ctx = await setup();
+  for (let i = 0; i < 15; i += 1) assert.equal((await ctx.scene()).success, true, `#${i}`);
+  await ctx.app.stop();
+});
+
+test('a /data date in the future stays as written (not rewritten to the current wall time)', async () => {
+  const store = createMemoryStore({ calls: [{ wall: NOW + 2 * HOUR, chars: 7 }] });
+  const ctx = await setup({ store });
+  await ctx.scene();
+  assert.equal(callsOf(store)[0].wall, NOW + 2 * HOUR);
+  await ctx.app.stop();
+});
+
+test('getConfig that never answers: a scene is refused within its bound', async () => {
+  let sdkRead = true;
+  const ctx = await setup({
+    start: false,
+    getConfig: () => {
+      if (sdkRead) {
+        sdkRead = false;
+        return Promise.resolve(BASE_CONFIG);
+      }
+      return new Promise(() => {});
+    },
+  });
+  ctx.gladys.connect(); // its "connected" handler waits for the config forever
+  await ctx.clock.advance(0);
+  const pending = ctx.scene();
+  for (let i = 0; i < 5; i += 1) await ctx.clock.advance(SECOND);
+  assert.match((await pending).error, /configuration is not read yet/);
+  assert.equal(ctx.api.requests.length, 0);
+  await ctx.app.stop();
+});
+
+test('a /data read that hangs counts as unreadable after 3 s', async () => {
+  const store = createMemoryStore();
+  store.load = () => new Promise(() => {});
+  const ctx = await setup({ store, start: false });
+  await ctx.gladys.connect();
+  await ctx.clock.advance(3500);
+  assert.match(status(ctx.gladys).message.en, /\/data is unreadable/);
+  assert.match((await ctx.scene()).error, /unreadable/);
+  await ctx.app.stop();
+});
+
+test('only a key ENDING in ":fx" goes to the Free host', async () => {
+  const ctx = await setup({ config: { api_key: 'abcdefgh-1234:fx:x' } });
+  await ctx.scene();
+  assert.equal(ctx.api.requests[0].origin, 'https://api.deepl.com');
+  await ctx.app.stop();
+});
+
+test('a 456 pause read back from /data is still told as a quota pause', async () => {
+  const store = createMemoryStore({ pause: { until: NOW + HOUR, why: 'quota', streak: 1 } });
+  const ctx = await setup({ store });
+  assert.match((await ctx.scene()).error, /456/);
+  assert.match(status(ctx.gladys).message.en, /456/);
+  await ctx.app.stop();
+});
+
+test('a /data date years ahead is brought back to one window ahead at most', async () => {
+  const store = createMemoryStore({ calls: [{ wall: NOW + 3650 * 24 * HOUR, chars: 7 }] });
+  const ctx = await setup({ store });
+  await ctx.scene();
+  const [first] = callsOf(store);
+  assert.ok(
+    first.wall <= NOW + 25 * HOUR && first.wall >= NOW + 23 * HOUR,
+    String(first.wall - NOW),
+  );
+  await ctx.app.stop();
+});
+
+test('a job still queued at stop() is refused before its count is even written', async () => {
+  let release;
+  const gate = new Promise((resolve) => (release = resolve));
+  const store = createMemoryStore();
+  const ctx = await setup({
+    store,
+    handler: async () => {
+      await gate;
+      return undefined;
+    },
+  });
+  const totals = [];
+  const save = store.save;
+  store.save = (data) => {
+    totals.push(data.calls.reduce((s, c) => s + c.chars, 0));
+    return save(data);
+  };
+  const first = ctx.scene();
+  await ctx.clock.advance(0);
+  const second = ctx.scene({ ...FIELDS, text: 'b'.repeat(777) });
+  await ctx.clock.advance(0);
+  const stopped = ctx.app.stop();
+  release();
+  await stopped;
+  assert.equal((await first).success, true);
+  assert.match((await second).error, /integration stopped/);
+  assert.equal(ctx.api.requests.length, 1);
+  assert.ok(
+    totals.every((t) => t < 777),
+    `the queued text never reached /data (${totals.join(', ')})`,
+  );
 });

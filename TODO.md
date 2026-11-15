@@ -26,6 +26,13 @@
       list in the manifest is the documented one of 2026-11; a language the
       account does not offer gets a 400, given back to the cap.
 
+## Known limits (review r1)
+
+- The deadline recheck after the save of the count (`translateOne`) cannot be
+  reached by a test: `blocked()` asks 13.5 s left before the save, the save
+  takes 3 s at most, and the recheck asks 10.5 s. Kept as a last check before
+  the request (reviewer mutant R2 survives by design).
+
 ## Ideas
 
 - A `context` field (not translated, not billed) for short texts.
@@ -57,9 +64,17 @@
   last 24 hours are unknown); it is read again every 10 s, never overwritten.
 - **A refused key** (403 of `/v2/translate`) is kept as an 8-bit salted HMAC:
   a new key is always tried; lifted by a success of the check button. A 403 of
-  `/v2/usage` alone marks nothing (rule of the secondary routes).
+  `/v2/usage` alone marks nothing (rule of the secondary routes). A 401 is not
+  a refusal (DeepL documents 403): shown as "DeepL answered 401", given back
+  to the cap. A new key typed while the integration is stopped and sharing the
+  8-bit mark (1 in 256) stays blocked until the button succeeds (said in the
+  status and the docs).
+- **The button** has its own deadline (18 s from the click, under the 20 s of
+  the manifest): behind slow translations, it answers "no time left" rather
+  than sending a request Gladys no longer waits for.
 - **Pauses**: 429/529 Retry-After bounded 60 s to 6 h; 5xx 60 s doubled up to
-  6 h; 456 (quota used up) 1 hour at least; kept in `/data`.
+  6 h, or its Retry-After when longer; 456 (quota, cost limit or key limit)
+  1 hour at least; kept in `/data`; no timer is set after `stop()`.
 - **The Free host is chosen by the key** (`:fx` suffix, DeepL documentation);
   no option.
 - **Formality** offers only `default`, `prefer_more` and `prefer_less`: the

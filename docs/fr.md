@@ -22,11 +22,11 @@ est.
 
 ## Configuration
 
-| Champ                                       | Rôle                                                                                                                                                                                 |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Clé d'authentification DeepL API            | Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à DeepL. Le module choisit l'adresse Free ou Pro d'après la clé.                                                |
-| Nombre maximal de caractères par traduction | De 1 à 5000 (1000 par défaut). Un texte plus long est refusé, jamais coupé. Espaces et ponctuation comptent, comme sur la facture DeepL ; un emoji compte pour un.                   |
-| Nombre maximal de caractères sur 24 heures  | De 100 à 1000000 (10000 par défaut), sur 24 heures glissantes. Plafond de sécurité contre une scène qui s'emballe. 10 000 par jour restent sous 310 000 par mois, dans l'offre Free. |
+| Champ                                       | Rôle                                                                                                                                                                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clé d'authentification DeepL API            | Gardée par Gladys dans sa base, jamais réaffichée, envoyée seulement à DeepL. Le module choisit l'adresse Free ou Pro d'après la clé.                                                                                       |
+| Nombre maximal de caractères par traduction | De 1 à 5000 (1000 par défaut). Un texte plus long est refusé, jamais coupé. Chaque point de code Unicode compte, espaces et ponctuation compris, comme sur la facture DeepL (la plupart des emoji : 1, certains plusieurs). |
+| Nombre maximal de caractères sur 24 heures  | De 100 à 1000000 (10000 par défaut), sur 24 heures glissantes. Plafond de sécurité contre une scène qui s'emballe. 10 000 par jour restent sous 310 000 par mois, dans l'offre Free.                                        |
 
 Le bouton **« Vérifier la clé »** demande à DeepL s'il accepte la clé et
 affiche les caractères consommés sur la période de facturation, et ceux que ce
@@ -67,11 +67,14 @@ traduction.
   réseau avant le départ de la requête) est rendue au plafond.
 - Quand DeepL annonce plus de caractères facturés que le module n'en a
   comptés, le plus grand nombre est gardé.
-- Le quota DeepL du compte (erreur 456) met le module en pause 1 heure au
+- Un quota DeepL atteint (erreur 456 : le quota de caractères du compte, sa
+  limite de coût ou une limite de la clé) met le module en pause 1 heure au
   moins ; un 429 « trop de requêtes » suit le délai demandé par DeepL (60 s à
   6 h) ; une panne DeepL (5xx) met en pause 60 s, doublées en cas de répétition,
-  6 h au plus.
-- Une requête à la fois ; 10 traductions au plus attendent leur tour.
+  6 h au plus (ou plus longtemps quand DeepL envoie un Retry-After, toujours 6 h
+  au plus).
+- Une requête à la fois ; 10 traductions au plus dans la file, celle en cours
+  comprise.
 
 ## Quand l'action de scène échoue
 
@@ -79,7 +82,8 @@ La scène continue ; l'erreur est dans le journal de la scène. Causes
 principales : texte vide, texte plus long que le maximum, plafond sur 24 heures
 atteint, clé refusée par DeepL (403 : plus aucune scène ne l'utilise tant que
 vous n'avez pas saisi une autre clé ou que le bouton « Vérifier la clé » n'a
-pas réussi), pause demandée par DeepL, `/data` illisible ou non inscriptible.
+pas réussi ; rarement, une nouvelle clé saisie pendant l'arrêt de
+l'intégration demande aussi le bouton), pause demandée par DeepL, `/data` illisible ou non inscriptible.
 
 ## Vie privée
 

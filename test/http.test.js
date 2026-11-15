@@ -43,11 +43,11 @@ test('a body larger than the bound is cut before being read whole', async () => 
 test('each status says whether DeepL may have counted the translation', async () => {
   for (const [out, code, sent] of [
     [json({}, 400), 'invalid', 'no'],
-    [json({}, 401), 'refused', 'no'],
+    [json({}, 401), 'unauthorized', 'no'],
     [json({}, 403), 'refused', 'no'],
     [json({}, 404), 'http', 'no'],
-    [json({}, 413), 'too_long', 'no'],
-    [json({}, 414), 'too_long', 'no'],
+    [json({}, 413), 'request_too_large', 'no'],
+    [json({}, 414), 'request_too_large', 'no'],
     [json({}, 429), 'rate_limited', 'no'],
     [json({}, 456), 'quota', 'no'],
     [json({}, 529), 'rate_limited', 'no'],
@@ -94,4 +94,11 @@ test('429: Retry-After read against the Date of the answer', async () => {
 test('a 2xx whose body does not read resolves json undefined', async () => {
   const out = await call(new Response('not json', { status: 200 }));
   assert.equal(out.json, undefined);
+});
+
+test('a 5xx carries its Retry-After too', async () => {
+  await assert.rejects(call(json({}, 503, { 'retry-after': '600' })), {
+    code: 'server',
+    retryAfter: 600_000,
+  });
 });

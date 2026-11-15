@@ -110,8 +110,8 @@
   {
     "name": "pause: 5xx not doubled",
     "file": "src/app.js",
-    "from": "this.setPause(PAUSE_MIN * 2 ** this.pause.streak, 'server');",
-    "to": "this.setPause(PAUSE_MIN, 'server');"
+    "from": "Math.max(err.retryAfter ?? 0, PAUSE_MIN * 2 ** this.pause.streak)",
+    "to": "Math.max(err.retryAfter ?? 0, PAUSE_MIN)"
   },
   {
     "name": "pause: Retry-After ignored",
@@ -170,8 +170,8 @@
   {
     "name": "http: 5xx not 'maybe'",
     "file": "src/http.js",
-    "from": "throw new DeeplError('server', { status, sent: unknown });",
-    "to": "throw new DeeplError('server', { status });"
+    "from": "throw new DeeplError('server', { status, sent: unknown, retryAfter: retryAfter() });",
+    "to": "throw new DeeplError('server', { status, retryAfter: retryAfter() });"
   },
   {
     "name": "http: timeout not 'maybe'",
@@ -214,5 +214,137 @@
     "file": "src/store.js",
     "from": "return err?.code === 'ENOENT' ? { status: 'missing' } : { status: 'unreadable' };",
     "to": "return { status: 'missing' };"
+  },
+  {
+    "name": "R1 save not awaited before the request",
+    "file": "src/app.js",
+    "from": "const saved = await this.save();",
+    "to": "const saved = (this.save(), true);"
+  },
+  {
+    "name": "R3 no stop recheck after the save",
+    "file": "src/app.js",
+    "from": "    if (!this.running || gen !== this.generation) {\n      this.release(entry);",
+    "to": "    if (false) {\n      this.release(entry);"
+  },
+  {
+    "name": "R4 blocked() ignores stop",
+    "file": "src/app.js",
+    "from": "if (!this.running || gen !== this.generation) return 'stopped';",
+    "to": ""
+  },
+  {
+    "name": "R5 button ignores the pause",
+    "file": "src/app.js",
+    "from": "    if (this.paused(mono))\n      return reasonMessage(this.pause.why === 'quota' ? 'quota' : 'paused', T.prefix.unchecked);",
+    "to": ""
+  },
+  {
+    "name": "R6 pause lower bound dropped (429 RA 5 s)",
+    "file": "src/app.js",
+    "from": "Math.max(grow ? PAUSE_MIN : 1, ms)",
+    "to": "Math.max(1, ms)"
+  },
+  {
+    "name": "R7 trimCalls loses the older count",
+    "file": "src/app.js",
+    "from": "chars: a.chars + b.chars",
+    "to": "chars: b.chars"
+  },
+  {
+    "name": "R8 save() writes over an unreadable /data",
+    "file": "src/app.js",
+    "from": "if (this.dataState !== 'ok' && this.dataState !== 'missing') return false;",
+    "to": ""
+  },
+  {
+    "name": "R9 queue counter never released",
+    "file": "src/app.js",
+    "from": "    try {\n      return await run;\n    } finally {\n      this.waiting -= 1;\n    }",
+    "to": "    return await run;"
+  },
+  {
+    "name": "R10 button outside the queue",
+    "file": "src/app.js",
+    "from": "const job = this.queue.then(() => this.runCheck(config, gen, deadline));\n    this.queue = job.catch(() => {});",
+    "to": "const job = this.runCheck(config, gen, deadline);"
+  },
+  {
+    "name": "R11 config wait unbounded",
+    "file": "src/app.js",
+    "from": "await Promise.race([this.readConfig(this.generation), late]);",
+    "to": "await this.readConfig(this.generation);"
+  },
+  {
+    "name": "R12 hung /data read never unreadable",
+    "file": "src/app.js",
+    "from": "      if (this.loading && gen === this.generation && this.running) {\n        this.restore({ status: 'unreadable' });\n      }",
+    "to": ""
+  },
+  {
+    "name": "R13 ECONNRESET counted as not sent",
+    "file": "src/http.js",
+    "from": "/^(ENOTFOUND|",
+    "to": "/^(ECONNRESET|ENOTFOUND|"
+  },
+  {
+    "name": "R14 every network error maybe",
+    "file": "src/http.js",
+    "from": "sent: BEFORE_SENDING.test(code) ? 'no' : sentIfUnknown",
+    "to": "sent: sentIfUnknown"
+  },
+  {
+    "name": "R15 Free host on any \":fx\" inside",
+    "file": "src/config.js",
+    "from": "key.endsWith(':fx')",
+    "to": "key.includes(':fx')"
+  },
+  {
+    "name": "R16 UTF-16 count",
+    "file": "src/text.js",
+    "from": "for (const _ of text) n += 1;\n  return n;",
+    "to": "return text.length + 0 * [...text].length;"
+  },
+  {
+    "name": "R17 restored pause loses why=quota",
+    "file": "src/app.js",
+    "from": "['rate_limited', 'quota'].includes(data.pause.why) ? data.pause.why : 'server'",
+    "to": "'server'"
+  },
+  {
+    "name": "R18 5xx to a translation not paused",
+    "file": "src/app.js",
+    "from": "      this.setPause(Math.max(err.retryAfter ?? 0, PAUSE_MIN * 2 ** this.pause.streak), 'server');\n",
+    "to": ""
+  },
+  {
+    "name": "pause: timer set after stop",
+    "file": "src/app.js",
+    "from": "    if (!this.running) return;\n    this.pauseTimer = this.timers.setTimeout(",
+    "to": "    this.pauseTimer = this.timers.setTimeout("
+  },
+  {
+    "name": "pause: 5xx Retry-After ignored",
+    "file": "src/app.js",
+    "from": "Math.max(err.retryAfter ?? 0, PAUSE_MIN * 2 ** this.pause.streak)",
+    "to": "Math.max(0, PAUSE_MIN * 2 ** this.pause.streak)"
+  },
+  {
+    "name": "button: deadline ignored",
+    "file": "src/app.js",
+    "from": "if (deadline - mono < HTTP_TIMEOUT) return reasonMessage('time', T.prefix.unchecked);",
+    "to": ""
+  },
+  {
+    "name": "http: 401 taken as a refusal",
+    "file": "src/http.js",
+    "from": "if (status === 401) throw new DeeplError('unauthorized', { status });",
+    "to": "if (status === 401) throw new DeeplError('refused', { status });"
+  },
+  {
+    "name": "data: future wall rewritten",
+    "file": "src/app.js",
+    "from": "kept.push({ mono: mono - age, wall: Math.min(item.wall, wall + CAP_WINDOW), chars });",
+    "to": "kept.push({ mono: mono - age, wall: Math.min(item.wall, wall), chars });"
   }
 ]

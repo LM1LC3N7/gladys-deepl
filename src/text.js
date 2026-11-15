@@ -3,7 +3,7 @@
 // to the 10,000 characters Gladys keeps.
 // -----------------------------------------------------------------------------
 
-/** Characters as DeepL counts them: Unicode code points (an emoji is one). */
+/** Characters as DeepL counts them: Unicode code points (most emoji are one, some several). */
 export const countChars = (text) => {
   let n = 0;
   for (const _ of text) n += 1;

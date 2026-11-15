@@ -29,8 +29,10 @@
 
 import { createHmac, randomBytes } from 'node:crypto';
 import {
+  BUTTON_BUDGET,
   CAP_WINDOW,
   FORMALITIES,
+  HTTP_TIMEOUT,
   LOAD_TIMEOUT,
   MAX_CALLS_KEPT,
   MAX_OUTPUT,
@@ -289,7 +291,10 @@ export class App {
       if (!Number.isInteger(chars) || chars < 0 || chars > 10_000_000) continue;
       const age = Math.max(0, wall - item.wall);
       if (age >= CAP_WINDOW) continue;
-      kept.push({ mono: mono - age, wall: Math.min(item.wall, wall), chars });
+      // A future wall date (a clock behind at boot) is kept as written, so the
+      // entry lasts longer once the clock is right again, never shorter; at
+      // most one window ahead, so a date years away cannot block forever.
+      kept.push({ mono: mono - age, wall: Math.min(item.wall, wall + CAP_WINDOW), chars });
     }
     this.calls = [...kept, ...this.calls];
     this.trimCalls();
@@ -378,6 +383,10 @@ export class App {
     this.pause.why = why;
     if (grow) this.pause.streak = Math.min(this.pause.streak + 1, 19);
     if (this.pauseTimer) this.timers.clearTimeout(this.pauseTimer);
+    this.pauseTimer = undefined;
+    // After stop() (a request answered during the shutdown) the pause is kept
+    // in memory and in /data, but no timer outlives the app.
+    if (!this.running) return;
     this.pauseTimer = this.timers.setTimeout(() => {
       this.pauseTimer = undefined;
       this.publishStatus();
@@ -544,7 +553,7 @@ export class App {
     } else if (err.code === 'rate_limited') {
       this.setPause(err.retryAfter ?? PAUSE_MIN * 2 ** this.pause.streak, 'rate_limited');
     } else if (err.code === 'server') {
-      this.setPause(PAUSE_MIN * 2 ** this.pause.streak, 'server');
+      this.setPause(Math.max(err.retryAfter ?? 0, PAUSE_MIN * 2 ** this.pause.streak), 'server');
     } else if (err.code === 'quota') {
       this.setPause(Math.max(QUOTA_PAUSE, PAUSE_MIN * 2 ** this.pause.streak), 'quota');
     }
@@ -573,6 +582,7 @@ export class App {
 
   /** Button "Check the key": GET /v2/usage, no character counted, in the queue. */
   async checkAccount() {
+    const deadline = this.monotonic() + BUTTON_BUDGET;
     let config;
     try {
       config = await this.configForSend();
@@ -583,7 +593,7 @@ export class App {
     }
     this.waiting += 1;
     const gen = this.generation;
-    const job = this.queue.then(() => this.runCheck(config, gen));
+    const job = this.queue.then(() => this.runCheck(config, gen, deadline));
     this.queue = job.catch(() => {});
     try {
       return await job;
@@ -592,12 +602,15 @@ export class App {
     }
   }
 
-  async runCheck(config, gen) {
+  async runCheck(config, gen, deadline) {
     if (!this.running || gen !== this.generation)
       return reasonMessage('stopped', T.prefix.unchecked);
     const mono = this.monotonic();
     if (this.paused(mono))
       return reasonMessage(this.pause.why === 'quota' ? 'quota' : 'paused', T.prefix.unchecked);
+    // Gladys gives up on the button after its timeout_seconds (20 s): a check
+    // that could no longer answer in time is not sent.
+    if (deadline - mono < HTTP_TIMEOUT) return reasonMessage('time', T.prefix.unchecked);
     const used = this.dataState === 'unreadable' ? undefined : this.used(mono);
     let message;
     try {

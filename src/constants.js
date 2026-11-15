@@ -106,7 +106,12 @@ export const MAX_ANSWER_BYTES = 256 * 1024;
  * (up to 15 s) included: 25 s here leave that room.
  */
 export const SCENE_BUDGET = 25_000;
-/** Scene actions waiting for their turn (one request in flight at a time). */
+/**
+ * Button budget, from the click: under the manifest's timeout_seconds (20 s),
+ * the request (10 s at most) included.
+ */
+export const BUTTON_BUDGET = 18_000;
+/** Translations in the queue, the one in flight included (one request at a time). */
 export const MAX_QUEUE = 10;
 
 /** Pause after a 429/529 or a 5xx: Retry-After when given, bounded, growing on repeat. */

@@ -29,3 +29,6 @@ the notes of the version's GitHub Release.
   changes or the button succeeds.
 - The text, the translation and the key never written in a log, the status
   nor `/data`.
+- A 401 shown as such (not taken as a refusal of the key), a 413 as a request
+  size refused by DeepL; the Retry-After of a 5xx respected; the button
+  refused when it could no longer answer in time; no timer left after stop.

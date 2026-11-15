@@ -20,11 +20,11 @@ Never tested with a real DeepL key yet: tell us how it goes.
 
 ## Configuration
 
-| Field                              | What it does                                                                                                                                                    |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DeepL API authentication key       | Kept by Gladys in its database, never shown again, sent only to DeepL. The module picks the Free or Pro address from the key.                                   |
-| Maximum characters per translation | 1 to 5000 (1000 by default). A longer text is refused, never cut. Spaces and punctuation count, as on the DeepL bill; an emoji counts as one.                   |
-| Maximum characters over 24 hours   | 100 to 1000000 (10000 by default), on a rolling 24 hours. A safety cap against a runaway scene. 10,000 a day stays under 310,000 a month, within the Free plan. |
+| Field                              | What it does                                                                                                                                                                            |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DeepL API authentication key       | Kept by Gladys in its database, never shown again, sent only to DeepL. The module picks the Free or Pro address from the key.                                                           |
+| Maximum characters per translation | 1 to 5000 (1000 by default). A longer text is refused, never cut. Every Unicode code point counts, spaces and punctuation included, as on the DeepL bill (most emoji: 1, some several). |
+| Maximum characters over 24 hours   | 100 to 1000000 (10000 by default), on a rolling 24 hours. A safety cap against a runaway scene. 10,000 a day stays under 310,000 a month, within the Free plan.                         |
 
 The **"Check the key"** button asks DeepL whether it accepts the key and
 shows the characters used this billing period, and those this module counted
@@ -62,17 +62,20 @@ French, followed by a "Send a message" action with the translation output.
   the request left) is given back to the cap.
 - When DeepL reports more billed characters than the module counted, the
   larger number is kept.
-- The DeepL quota of the account (456 error) pauses the module for 1 hour at
-  least; a 429 "too many requests" follows the delay asked by DeepL (60 s to
-  6 h); a DeepL failure (5xx) pauses 60 s, doubled on repeat, 6 h at most.
-- One request at a time; 10 translations at most wait for their turn.
+- A DeepL quota reached (456 error: the character quota of the account, its
+  cost limit or a limit of the key) pauses the module for 1 hour at least; a 429 "too many requests" follows the delay asked by DeepL (60 s to
+  6 h); a DeepL failure (5xx) pauses 60 s, doubled on repeat, 6 h at most (or
+  longer when DeepL sends a Retry-After, still 6 h at most).
+- One request at a time; 10 translations at most in the queue, the one in
+  flight included.
 
 ## When the scene action fails
 
 The scene goes on; the error is in the scene log. Main causes: empty text,
 text longer than the maximum, cap over 24 hours reached, key refused by DeepL
 (403: no scene uses it again until you type another key or the "Check the key"
-button succeeds), pause asked by DeepL, `/data` unreadable or not writable.
+button succeeds; rarely, a new key typed while the integration is stopped also
+needs the button), pause asked by DeepL, `/data` unreadable or not writable.
 
 ## Privacy
 
