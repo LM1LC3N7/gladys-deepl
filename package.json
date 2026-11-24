@@ -1,6 +1,6 @@
 {
   "name": "gladys-deepl",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "DeepL translation in Gladys Assistant scenes, with your DeepL API Free or Pro key. Unofficial.",
   "type": "module",
